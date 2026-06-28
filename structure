@@ -1,0 +1,46 @@
+# Create the following React folder structure for my project "NeuroNav"
+
+Please generate all folders and empty files exactly as listed:
+
+src/
+  assets/
+    icons/
+    images/
+    logo.svg
+  components/
+    Timer/
+      TimerCircle.jsx
+      TimerControls.jsx
+      FocusLevelBar.jsx
+    Camera/
+      CameraBubble.jsx
+      useCamera.js
+    Task/
+      TaskInput.jsx
+      TaskStepCard.jsx
+    Calm/
+      BreathingGuide.jsx
+      GroundingExercise.jsx
+      EncouragementCard.jsx
+    Navbar.jsx
+  pages/
+    Home.jsx
+    TaskBreaker.jsx
+    FocusMode.jsx
+    CalmCorner.jsx
+  hooks/
+    usePomodoro.js
+    useStressDetection.js
+    useAI.js
+  utils/
+    prompts.js
+    faceDetection.js
+    calculateFocusScore.js
+  styles/
+    globals.css
+    theme.js
+  App.jsx
+  main.jsx
+  router.jsx
+
+Please generate the folder structure and empty files in my project.

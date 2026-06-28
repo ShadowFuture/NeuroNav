@@ -1,87 +1,57 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from db import User, SessionLocal
-from passlib.context import CryptContext
-from jose import jwt
-from datetime import datetime, timedelta
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from backend.db import User, SessionLocal
+import hashlib
+import os
 
 router = APIRouter()
 
-SECRET_KEY = "your-secret-key"
-ALGORITHM = "HS256"
+def hash_password(password: str) -> str:
+    salt = os.urandom(16).hex()
+    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}${hashed}"
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def verify_password(password: str, stored: str) -> bool:
+    salt, hashed = stored.split("$")
+    check = hashlib.sha256((salt + password).encode()).hexdigest()
+    return check == hashed
 
-# ---------------------------
-# Request Body Model
-# ---------------------------
-class AuthRequest(BaseModel):
+class SignupRequest(BaseModel):
     email: str
     password: str
 
-# ---------------------------
-# Database Dependency
-# ---------------------------
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
-# ---------------------------
-# Helpers
-# ---------------------------
-def hash_password(password: str):
-    # bcrypt only supports up to 72 bytes
-    password = password.encode("utf-8")[:72].decode("utf-8", "ignore")
-    return pwd_context.hash(password)
-
-def verify_password(plain: str, hashed: str):
-    plain = plain.encode("utf-8")[:72].decode("utf-8", "ignore")
-    return pwd_context.verify(plain, hashed)
-
-
-
-def create_token(email: str):
-    payload = {
-        "sub": email,
-        "exp": datetime.utcnow() + timedelta(hours=12)
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-# ---------------------------
-# Signup Route
-# ---------------------------
 @router.post("/signup")
-def signup(payload: AuthRequest, db: Session = Depends(get_db)):
-    email = payload.email
-    password = payload.password
+def signup(data: SignupRequest):
+    db = SessionLocal()
 
-    existing = db.query(User).filter(User.email == email).first()
+    existing = db.query(User).filter(User.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    user = User(email=email, password=hash_password(password))
+    user = User(
+        email=data.email,
+        password=hash_password(data.password)
+    )
+
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    return {"message": "Signup successful"}
-
-# ---------------------------
-# Login Route
-# ---------------------------
+    return {"message": "Signup successful", "user_id": user.id}
 
 @router.post("/login")
-def login(payload: AuthRequest, db: Session = Depends(get_db)):
-    email = payload.email
-    password = payload.password
+def login(data: LoginRequest):
+    db = SessionLocal()
 
-    user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user:
         raise HTTPException(status_code=400, detail="Invalid email or password")
 
-    token = create_token(user.email)
-    return {"access_token": token}
+    if not verify_password(data.password, user.password):
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+
+    return {"message": "Login successful", "user_id": user.id}
